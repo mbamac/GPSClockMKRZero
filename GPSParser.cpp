@@ -1,5 +1,5 @@
 /*
-	GPSClock.cpp - simple GPS parser 
+	GPSParser.cpp - simple GPS parser 
 	Copyright (C) 2023 Maciej Bartosiak
 
 	This program is free software: you can redistribute it and/or modify
@@ -16,9 +16,9 @@
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include "GPSClock.h"
+#include "GPSParser.h"
 
-GPSClock::GPSClock()
+GPSParser::GPSParser()
 :	state(NMEA_WAIT)
 ,	id(NMEA_ID_OTHER)
 ,	checksum(0)
@@ -32,13 +32,15 @@ GPSClock::GPSClock()
 ,	day(0)
 ,	month(0)
 ,	year(0)
+#if defined(USE_GGA)
 , 	nsat_ready(false)
 , 	nsat(0)
+#endif
 {
 	clear_buf();
 }
 
-void GPSClock::reset(void)
+void GPSParser::reset(void)
 {
 	clear_buf();
 	state = NMEA_WAIT;
@@ -55,14 +57,15 @@ void GPSClock::reset(void)
 	day = 0;
 	month = 0;
 	year = 0;
+#if defined(USE_GGA)
 	nsat_ready = false;
 	nsat = 0;
-	
+#endif
 	// zeroize buf
 	// buf_pos = NMEA_BUFF_SIZE;
 }
 
-inline uint8_t GPSClock::str2decimal(char *buf)
+inline uint8_t GPSParser::str2decimal(char *buf)
 {
 	return 10 * (buf[0] - '0') + (buf[1] - '0');
 }
@@ -85,7 +88,7 @@ inline uint8_t GPSClock::str2decimal(char *buf)
 //	14. Diff. ref. station	empty
 
 #ifdef USE_GGA
-void GPSClock::data_gga_reader()
+void GPSParser::data_gga_reader()
 {
 	if (buf[0] == '\0')
 		return;
@@ -112,7 +115,7 @@ void GPSClock::data_gga_reader()
 //	11. Magnetic variation	E/W	E if variation positive
 //	12.	Mode indicator		A: Autonomous D: Differential
 
-void GPSClock::data_rmc_reader()
+void GPSParser::data_rmc_reader()
 {
 	if (buf[0] == '\0')
 		return;
@@ -150,7 +153,7 @@ void GPSClock::data_rmc_reader()
 // ZDA – Time and Date
 // PASHR – Attitude Data
 
-nmea_id GPSClock::check_message_id() {
+nmea_id GPSParser::check_message_id() {
 	if (buf[0] != 'G')
 		return NMEA_ID_OTHER;
 	
@@ -168,7 +171,7 @@ nmea_id GPSClock::check_message_id() {
 	return NMEA_ID_OTHER;
 }
 
-void GPSClock::clear_buf() {
+void GPSParser::clear_buf() {
 	while(buf_pos)
 		buf[--buf_pos] = '\0';
 }
@@ -182,7 +185,7 @@ inline uint8_t hexchar(char a)
 	return a - '0';
 }
 
-void GPSClock::nmea_parse(char c)
+void GPSParser::nmea_parse(char c)
 {
 	static uint8_t r_checksum;
 	

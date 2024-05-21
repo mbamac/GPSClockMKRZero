@@ -1,5 +1,5 @@
 /*
-	GPSClock.h - simple GPS parser 
+	GPSParser.h - simple GPS parser 
 	Copyright (C) 2023 Maciej Bartosiak
 
 	This program is free software: you can redistribute it and/or modify
@@ -37,7 +37,7 @@ typedef enum {
 } nmea_id;
 
 
-class GPSClock {
+class GPSParser {
 private:
 	nmea_state state;
 	nmea_id id;
@@ -65,7 +65,7 @@ public:
 	uint8_t nsat;
 #endif
 public:
-	GPSClock();
+	GPSParser();
 	void nmea_parse(char c);
 private:
 	void reset(void);
