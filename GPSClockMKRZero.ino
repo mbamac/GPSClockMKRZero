@@ -22,8 +22,9 @@
 #include <Adafruit_SSD1306.h>
 
 #define USE_GGA // for # of satellites
+#define PL_LANG
 
-#include "GPSClock.h"
+#include "GPSParser.h"
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
@@ -31,11 +32,13 @@
 // SSD1306 display connected to I2C (SDA, SCL pins)
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire);
 
-GPSClock clk;
+GPSParser gps;
 
 uint8_t timezone = 1; // +1 for Central Europe Time
 
 uint8_t sats = 0;
+uint8_t prev_hour = 255;
+uint8_t prev_min  = 255;
 
 bool timepulse = false;
 
@@ -54,8 +57,11 @@ void setup()
 
 	display.setTextSize(1,2);
 	display.setCursor(38, 24);
+#if !defined(PL_LANG)
 	display.print("GPS Clock");
-
+#else
+	display.print("Zegar GPS");
+#endif
 	display.display();
 	
 	// Serial port for debugging
@@ -91,11 +97,55 @@ void setup()
 	// Serial1.print("$PUBX,40,GST,0,0,0,0*5B\n\r");
 	
 	delay(500);
-	display.clearDisplay();
-
+	// display.clearDisplay();
+	//display.ssd1306_command(SSD1306_SETCONTRAST);
+  	//display.ssd1306_command(0xff);
 	// setup pin 6 for timepulse interrupt
 	pinMode(6, INPUT);
 	attachInterrupt(digitalPinToInterrupt(6), pps, RISING);
+
+	first_loop();
+}
+
+// first loop
+void first_loop(void)
+{
+	uint8_t c;
+	static bool first_data = true;
+
+	while(1) {
+		if (Serial1.available()) {
+			c = Serial1.read();
+			gps.nmea_parse(c);
+			if (gps.time_ready) {
+				gps.time_ready = false;
+				
+				// display the data prepared ealier if there was no interrupt
+				if(!timepulse)
+					display.display();
+				if ((gps.day == 0) && (gps.second == 0)) {
+					display_no_signal();
+				} else {
+					if (first_data == true) {
+						display.clearDisplay();
+						first_data = false;
+					}
+					display_date();
+					prepare_time();
+					if (gps.day != 0) {
+						prev_hour = 255;
+						prev_min  = 255;
+						return;
+					}
+				}
+			}
+			if (gps.nsat_ready) {
+				gps.nsat_ready = false;
+				sats = gps.nsat;
+			}
+		// Serial.print((char)c);
+		}
+	}
 }
 
 // main loop
@@ -105,9 +155,9 @@ void loop(void)
 
 	if (Serial1.available()) {
 		c = Serial1.read();
-		clk.nmea_parse(c);
-		if (clk.time_ready) {
-			clk.time_ready = false;
+		gps.nmea_parse(c);
+		if (gps.time_ready) {
+			gps.time_ready = false;
 			
 			// display the data prepared ealier if there was no interrupt
 			if(!timepulse)
@@ -115,11 +165,11 @@ void loop(void)
 			display_date();
 			prepare_time();
 		}
-		if (clk.nsat_ready) {
-			clk.nsat_ready = false;
-			sats = clk.nsat;
+		if (gps.nsat_ready) {
+			gps.nsat_ready = false;
+			sats = gps.nsat;
 		}
-		//Serial.print((char)c);
+		// Serial.print((char)c);
 	}
 }
 
@@ -131,30 +181,52 @@ void pps(void)
 	timepulse = true;
 }
 
-void display0(uint8_t val) {
+void display_no_signal()
+{
+	display.drawRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, SSD1306_WHITE);
+	display.setTextSize(1,2);
+	display.setCursor(38, 24);
+#if !defined(PL_LANG)
+	display.print("GPS Clock");
+#else
+	display.print("Zegar GPS");
+#endif
+	display.setTextSize(1,1);
+#if !defined(PL_LANG)
+	display.setCursor(4, 52);
+	display.print("waiting for GPS data");
+#else
+	display.setCursor(10, 52);
+	display.print("czekam na dane GPS");
+#endif
+}
+
+void display0(uint8_t val)
+{
 	if (val < 10)	
 		display.print(0);
 	display.print(val);
 }
 
-void display_date(void) {
+void display_date(void)
+{
 	static uint8_t last_day = 255;
 	static uint8_t last_month = 255;
 	static uint8_t last_year = 255;
 	static uint8_t last_sats = 255;
 	static char last_valid = 'm';
 
-	if (last_day != clk.day) {
+	if (last_day != gps.day) {
 		display.setTextSize(1,2);
 		display.setCursor(17, 43);
 
-		display0(clk.day);
+		display0(gps.day);
 		display.print('.');
-		display0(clk.month);
+		display0(gps.month);
 		display.print('.');
-		display0(clk.year);
+		display0(gps.year);
 
-		last_day = clk.day;
+		last_day = gps.day;
 		display.display();
 	}
 	if (last_sats != sats) {
@@ -167,13 +239,13 @@ void display_date(void) {
 		last_sats = sats;
 		display.display();
 	}
-	if (last_valid != clk.valid) {
+	if (last_valid != gps.valid) {
 		display.setTextSize(1,2);
 		display.setCursor(71, 43);
 
-		display.print((clk.valid=='A')?"  ":"!!");
+		display.print((gps.valid=='A')?"  ":"!!");
 
-		last_valid = clk.valid;
+		last_valid = gps.valid;
 		display.display();
 	}
 }
@@ -183,18 +255,15 @@ void prepare_time(void) {
 	static uint8_t next_min = 0;
 	static uint8_t next_hour = 0;
 
-	static uint8_t prev_min = 255;
-	static uint8_t prev_hour = 255;
-
 	uint8_t hour;
 
 
 	// prepare next time but do not display it, wait for pps interrupt
-	next_sec = clk.second + 1;
+	next_sec = gps.second + 1;
 	if (next_sec >= 60) next_sec = 0;
 	
-	next_min = clk.minute;
-	next_hour = clk.hour;
+	next_min = gps.minute;
+	next_hour = gps.hour;
 	
 	display.setTextSize(2,4);
 	display.setCursor(89, 7);
@@ -218,7 +287,7 @@ void prepare_time(void) {
 		if (next_hour != prev_hour) {
 			prev_hour = next_hour;
 
-			hour = next_hour + timezone + dst(next_hour + timezone, clk.day, clk.month, clk.year);
+			hour = next_hour + timezone + dst(next_hour + timezone, gps.day, gps.month, gps.year);
 			if(hour >= 24) hour -= 24;
 			if(hour < 0) hour += 24;
 			display.setCursor(17, 7);
