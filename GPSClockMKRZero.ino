@@ -49,7 +49,7 @@ void setup()
 		for (;;); // loop forever if library fails to initialize
 	}
 	delay(100);
-	
+
 	display.clearDisplay();
 
 	// draw simple splash screen
@@ -115,46 +115,9 @@ void first_loop(void)
 	static bool first_data = true;
 
 	while(1) {
-		if (Serial1.available()) {
-			c = Serial1.read();
-			gps.nmea_parse(c);
-			if (gps.time_ready) {
-				gps.time_ready = false;
-				
-				// display the data prepared ealier if there was no interrupt
-				if(!timepulse)
-					display.display();
-				if ((gps.day == 0) && (gps.second == 0)) {
-					display_no_signal();
-				} else {
-					if (first_data == true) {
-						display.clearDisplay();
-						first_data = false;
-					}
-					display_date();
-					prepare_time();
-					if (gps.day != 0) {
-						prev_hour = 255;
-						prev_min  = 255;
-						return;
-					}
-				}
-			}
-			if (gps.nsat_ready) {
-				gps.nsat_ready = false;
-				sats = gps.nsat;
-			}
-		// Serial.print((char)c);
+		if (! Serial1.available()) {
+			continue;
 		}
-	}
-}
-
-// main loop
-void loop(void)
-{
-	uint8_t c;
-
-	if (Serial1.available()) {
 		c = Serial1.read();
 		gps.nmea_parse(c);
 		if (gps.time_ready) {
@@ -163,15 +126,54 @@ void loop(void)
 			// display the data prepared ealier if there was no interrupt
 			if(!timepulse)
 				display.display();
-			display_date();
-			prepare_time();
+			if ((gps.day == 0) && (gps.second == 0)) {
+				display_no_signal();
+			} else {
+				if (first_data == true) {
+					display.clearDisplay();
+					first_data = false;
+				}
+				display_date();
+				prepare_time();
+				if (gps.day != 0) {
+					prev_hour = 255;
+					prev_min  = 255;
+					return;
+				}
+			}
 		}
 		if (gps.nsat_ready) {
 			gps.nsat_ready = false;
 			sats = gps.nsat;
 		}
-		// Serial.print((char)c);
+	// Serial.print((char)c);
 	}
+}
+
+// main loop
+void loop(void)
+{
+	uint8_t c;
+
+	if (! Serial1.available()) {
+		return;
+	}
+	c = Serial1.read();
+	gps.nmea_parse(c);
+	if (gps.time_ready) {
+		gps.time_ready = false;
+		
+		// display the data prepared ealier if there was no interrupt
+		if(!timepulse)
+			display.display();
+		display_date();
+		prepare_time();
+	}
+	if (gps.nsat_ready) {
+		gps.nsat_ready = false;
+		sats = gps.nsat;
+	}
+	// Serial.print((char)c);
 }
 
 // interrupt handler for timepulse
@@ -335,7 +337,7 @@ int dst(int hour, int day, int month, int year)
 		dayofchange = 31 - zeller(31, month, year);
 		if (((day == dayofchange) && (hour >= 2)) || (day > dayofchange))
 			// before 3 A.M. of last  Sunday of October
-		return 0;
+			return 0;
 		return 1;
 	}
 	// after September
