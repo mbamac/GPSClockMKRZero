@@ -49,7 +49,7 @@ private:
 public:
 	// parsed stuff
 	
-	bool time_ready;
+	bool time_message_ready;
 	// from RMC
 	uint8_t hour;
 	uint8_t minute;
@@ -60,7 +60,7 @@ public:
 	uint8_t year;
 	char valid;
 #ifdef USE_GGA
-	bool nsat_ready;
+	bool nsat_message_ready;
 	// from GGA
 	uint8_t nsat;
 #endif

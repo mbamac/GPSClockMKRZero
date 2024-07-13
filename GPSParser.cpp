@@ -24,7 +24,7 @@ GPSParser::GPSParser()
 ,	checksum(0)
 ,	token_number(0)
 ,	buf_pos(NMEA_BUFF_SIZE)
-,	time_ready(false)
+,	time_message_ready(false)
 ,	hour(0)
 ,	minute(0)
 ,	second(0)
@@ -33,7 +33,7 @@ GPSParser::GPSParser()
 ,	month(0)
 ,	year(0)
 #if defined(USE_GGA)
-, 	nsat_ready(false)
+, 	nsat_message_ready(false)
 , 	nsat(0)
 #endif
 {
@@ -48,7 +48,7 @@ void GPSParser::reset(void)
 	checksum = 0;
 	token_number = 0;
 
-	time_ready = false;
+	time_message_ready = false;
 	
 	hour   = 0;
 	minute = 0;
@@ -58,7 +58,7 @@ void GPSParser::reset(void)
 	month = 0;
 	year = 0;
 #if defined(USE_GGA)
-	nsat_ready = false;
+	nsat_message_ready = false;
 	nsat = 0;
 #endif
 	// zeroize buf
@@ -190,75 +190,82 @@ void GPSParser::nmea_parse(char c)
 	static uint8_t r_checksum;
 	
 	if (c == '$') {
-		// reset parser state if char is $
+		// reset parser state if char is $ (i.e. beginning of NMEA message)
 		reset();
 		state = NMEA_ID;
 		return;
 	}
 	
 	if (state == NMEA_WAIT) {
+		// return if in wait state
 		return;
 	}
 	
 	if (c == '*') {
+		// end of message data. start checksum verification
 		state = NMEA_CHECKSUM;
 		clear_buf();
 		return;
 	}
 	
-	if (state != NMEA_CHECKSUM) {
-		checksum ^= (uint8_t)c;
-	} else {
+	if (state == NMEA_CHECKSUM) {
 		if ((c != '\r') && (c != '\n')) {
 			r_checksum <<= 4;
 			r_checksum |= hexchar(c);
-		} else {
-			if (checksum == r_checksum) {
-				if (id == NMEA_ID_RMC)
-					time_ready = true;
-#ifdef USE_GGA
-				if (id == NMEA_ID_GGA)
-					nsat_ready = true;
-#endif
-			}
-			r_checksum = 0;
-			state = NMEA_WAIT;
+			return;
 		}
+		if (checksum == r_checksum) {
+			if (id == NMEA_ID_RMC)
+				time_message_ready = true;
+#ifdef USE_GGA
+			if (id == NMEA_ID_GGA)
+				nsat_message_ready = true;
+#endif
+		}
+		r_checksum = 0;
+		state = NMEA_WAIT;
+
 		return;
 	}
 	
+	checksum ^= (uint8_t)c;
+	
 	if (state == NMEA_ID) {
-		if (c != ',')
+		if (c != ',') {
 			buf[buf_pos++] = c;
-		else {
-			id = check_message_id();
-			if (id != NMEA_ID_OTHER)
-				state = NMEA_DATA;
-			clear_buf();
+			return;
 		}
+
+		id = check_message_id();
+		if (id != NMEA_ID_OTHER)
+			state = NMEA_DATA;
+		clear_buf();
 		return;
 	}
 	
 	if (state == NMEA_DATA) {
-		if (c == ',') {
-#ifdef USE_GGA
-			switch (id) {
-				case NMEA_ID_RMC:
-					data_rmc_reader();
-					break;
-				case NMEA_ID_GGA:
-					data_gga_reader();
-					break;
-				default:
-					break;
-			}
-#else
-			data_rmc_reader();
-#endif
-			token_number++;
-			clear_buf();
-		} else
+		if (c != ',') {
 			buf[buf_pos++] = c;
+			return;
+		}
+#ifdef USE_GGA
+		switch (id) {
+			case NMEA_ID_RMC:
+				data_rmc_reader();
+				break;
+			case NMEA_ID_GGA:
+				data_gga_reader();
+				break;
+			default:
+				break;
+		}
+#else
+		data_rmc_reader();
+#endif
+		token_number++;
+		clear_buf();
+		if (c == '*')
+			state = NMEA_CHECKSUM;
 		return;
 	}
 }
