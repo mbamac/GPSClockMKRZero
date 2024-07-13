@@ -189,31 +189,35 @@ void GPSParser::nmea_parse(char c)
 {
 	static uint8_t r_checksum;
 	
+	// start parsing if char is $ (i.e. beginning of NMEA message)
 	if (c == '$') {
-		// reset parser state if char is $ (i.e. beginning of NMEA message)
 		reset();
 		state = NMEA_ID;
 		return;
 	}
 	
+	// do nothing in wait state
 	if (state == NMEA_WAIT) {
-		// return if in wait state
 		return;
 	}
 	
+	// end of message data. start checksum verification
 	if (c == '*') {
-		// end of message data. start checksum verification
 		state = NMEA_CHECKSUM;
 		clear_buf();
 		return;
 	}
 	
+
 	if (state == NMEA_CHECKSUM) {
+		// read checksum until EOL
 		if ((c != '\r') && (c != '\n')) {
 			r_checksum <<= 4;
 			r_checksum |= hexchar(c);
 			return;
 		}
+
+		// at EOL
 		if (checksum == r_checksum) {
 			if (id == NMEA_ID_RMC)
 				time_message_ready = true;
@@ -228,8 +232,10 @@ void GPSParser::nmea_parse(char c)
 		return;
 	}
 	
+	// calculate checksum from all message data
 	checksum ^= (uint8_t)c;
 	
+	// read NMEA ID
 	if (state == NMEA_ID) {
 		if (c != ',') {
 			buf[buf_pos++] = c;
@@ -243,6 +249,7 @@ void GPSParser::nmea_parse(char c)
 		return;
 	}
 	
+	// read NMEA data
 	if (state == NMEA_DATA) {
 		if (c != ',') {
 			buf[buf_pos++] = c;

@@ -115,13 +115,12 @@ void first_loop(void)
 	static bool first_data = true;
 
 	while(1) {
-		if (! Serial1.available()) {
+		if (! Serial1.available())
 			continue;
-		}
 		c = Serial1.read();
 		gps.nmea_parse(c);
-		if (gps.time_ready) {
-			gps.time_ready = false;
+		if (gps.time_message_ready) {
+			gps.time_message_ready = false;
 			
 			// display the data prepared ealier if there was no interrupt
 			if(!timepulse)
@@ -142,8 +141,8 @@ void first_loop(void)
 				}
 			}
 		}
-		if (gps.nsat_ready) {
-			gps.nsat_ready = false;
+		if (gps.nsat_message_ready) {
+			gps.nsat_message_ready = false;
 			sats = gps.nsat;
 		}
 	// Serial.print((char)c);
@@ -155,13 +154,12 @@ void loop(void)
 {
 	uint8_t c;
 
-	if (! Serial1.available()) {
+	if (! Serial1.available())
 		return;
-	}
 	c = Serial1.read();
 	gps.nmea_parse(c);
-	if (gps.time_ready) {
-		gps.time_ready = false;
+	if (gps.time_message_ready) {
+		gps.time_message_ready = false;
 		
 		// display the data prepared ealier if there was no interrupt
 		if(!timepulse)
@@ -169,8 +167,8 @@ void loop(void)
 		display_date();
 		prepare_time();
 	}
-	if (gps.nsat_ready) {
-		gps.nsat_ready = false;
+	if (gps.nsat_message_ready) {
+		gps.nsat_message_ready = false;
 		sats = gps.nsat;
 	}
 	// Serial.print((char)c);
