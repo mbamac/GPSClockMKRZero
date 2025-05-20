@@ -3,20 +3,20 @@
 	Copyright (C) 2023 Maciej Bartosiak
 
 	This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+	it under the terms of the GNU General Public License as published by
+	the Free Software Foundation, either version 3 of the License, or
+	(at your option) any later version.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
+	This program is distributed in the hope that it will be useful,
+	but WITHOUT ANY WARRANTY; without even the implied warranty of
+	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+	GNU General Public License for more details.
 
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+	You should have received a copy of the GNU General Public License
+	along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-#include <SPI.h>
+//#include <SPI.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
@@ -34,6 +34,8 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire);
 
 GPSParser gps;
 
+extern const GFXfont BigFont;
+
 uint8_t timezone = 1; // +1 for Central Europe Time
 
 uint8_t sats = 0;
@@ -45,6 +47,7 @@ bool timepulse = false;
 void setup() 
 {
 	// initialize display
+	// Address 0x3C for 128x64
 	if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // Address 0x3C for 128x64
 		for (;;); // loop forever if library fails to initialize
 	}
@@ -102,7 +105,7 @@ void setup()
 	//display.ssd1306_command(SSD1306_SETCONTRAST);
   	//display.ssd1306_command(0xff);
 	// setup pin 6 for timepulse interrupt
-	pinMode(6, INPUT);
+	pinMode(6, INPUT_PULLDOWN);
 	attachInterrupt(digitalPinToInterrupt(6), pps, RISING);
 
 	first_loop();
