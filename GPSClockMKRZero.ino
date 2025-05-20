@@ -25,6 +25,7 @@
 #define PL_LANG
 
 #include "GPSParser.h"
+#include "BigFont.h"
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
@@ -220,6 +221,7 @@ void display_date(void)
 	static uint8_t last_sats = 255;
 	static char last_valid = 'm';
 
+	display.setFont();
 	if (last_day != gps.day) {
 		display.setTextSize(1,2);
 		display.setCursor(17, 43);
@@ -269,7 +271,10 @@ void prepare_time(void) {
 	next_min = gps.minute;
 	next_hour = gps.hour;
 	
-	display.setTextSize(2,4);
+	//display.setTextSize(2,4);
+	display.fillRect(87, 7, 24, 28, SSD1306_BLACK);
+	display.setTextSize(1,1);
+	display.setFont(&BigFont);
 	display.setCursor(89, 7);
 	display0(next_sec);
 
@@ -284,6 +289,7 @@ void prepare_time(void) {
 	if (next_min != prev_min) {
 		prev_min = next_min;
 
+		display.fillRect(53, 7, 24, 28, SSD1306_BLACK);
 		display.setCursor(53, 7);
 		display0(next_min);
 		display.print(':');
@@ -294,6 +300,7 @@ void prepare_time(void) {
 			hour = next_hour + timezone + dst(next_hour + timezone, gps.day, gps.month, gps.year);
 			if(hour >= 24) hour -= 24;
 			if(hour < 0) hour += 24;
+			display.fillRect(17, 7, 24, 28, SSD1306_BLACK);
 			display.setCursor(17, 7);
 			display0(hour);
 			display.print(':');
