@@ -26,6 +26,7 @@
 
 #include "GPSParser.h"
 #include "BigFont.h"
+#include "SmallFont.h"
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
@@ -67,6 +68,7 @@ void setup()
 #else
 	display.print("Zegar GPS");
 #endif
+	display.setTextSize(1,1);
 	display.display();
 	
 	// Serial port for debugging
@@ -189,6 +191,7 @@ void pps(void)
 void display_no_signal()
 {
 	display.drawRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, SSD1306_WHITE);
+	display.setFont();
 	display.setTextSize(1,2);
 	display.setCursor(38, 24);
 #if !defined(PL_LANG)
@@ -221,9 +224,11 @@ void display_date(void)
 	static uint8_t last_sats = 255;
 	static char last_valid = 'm';
 
-	display.setFont();
+	display.setFont(&SmallFont);
 	if (last_day != gps.day) {
-		display.setTextSize(1,2);
+		//display.setTextSize(1,2);
+		display.fillRect(17, 43, 48, 14, SSD1306_BLACK);
+		//display.drawRect(17, 43, 48, 14, SSD1306_WHITE);
 		display.setCursor(17, 43);
 
 		display0(gps.day);
@@ -236,7 +241,9 @@ void display_date(void)
 		display.display();
 	}
 	if (last_sats != sats) {
-		display.setTextSize(1,2);
+		//display.setTextSize(1,2);
+		display.fillRect(88, 43, 24, 14, SSD1306_BLACK);
+		//display.drawRect(88, 43, 24, 14, SSD1306_WHITE);
 		display.setCursor(88, 43);
 
 		display.print("S:");
@@ -246,7 +253,9 @@ void display_date(void)
 		display.display();
 	}
 	if (last_valid != gps.valid) {
-		display.setTextSize(1,2);
+		//display.setTextSize(1,2);
+		display.fillRect(71, 43, 12, 14, SSD1306_BLACK);
+		//display.drawRect(71, 43, 12, 14, SSD1306_WHITE);
 		display.setCursor(71, 43);
 
 		display.print((gps.valid=='A')?"  ":"!!");
@@ -273,8 +282,8 @@ void prepare_time(void) {
 	
 	//display.setTextSize(2,4);
 	display.fillRect(87, 7, 24, 28, SSD1306_BLACK);
-	display.setTextSize(1,1);
 	display.setFont(&BigFont);
+	display.setTextSize(1,1);
 	display.setCursor(89, 7);
 	display0(next_sec);
 
